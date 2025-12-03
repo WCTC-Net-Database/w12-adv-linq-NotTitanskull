@@ -35,6 +35,17 @@ namespace ConsoleRpgEntities.Data
                 .HasMany(p => p.Abilities)
                 .WithMany(a => a.Players)
                 .UsingEntity(j => j.ToTable("PlayerAbilities"));
+            
+            // Configure decimal precision to avoid silent truncation for MaxWeight and Item.Weight
+            modelBuilder.Entity<Player>(entity =>
+            {
+                entity.Property(p => p.MaxWeight).HasPrecision(18, 2);
+            });
+
+            modelBuilder.Entity<Item>(entity =>
+            {
+                entity.Property(i => i.Weight).HasPrecision(18, 2);
+            });
 
             // Call the separate configuration method to set up Equipment entity relationships
             ConfigureEquipmentRelationships(modelBuilder);

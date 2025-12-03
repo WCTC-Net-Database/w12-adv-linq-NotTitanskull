@@ -59,59 +59,9 @@ namespace ConsoleRpgEntities.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Abilities", (string)null);
+                    b.ToTable("Abilities");
 
                     b.HasDiscriminator<string>("AbilityType").HasValue("Ability");
-                });
-
-            modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Equipment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<int?>("ArmorId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("WeaponId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ArmorId");
-
-                    b.HasIndex("WeaponId");
-
-                    b.ToTable("Equipments", (string)null);
-                });
-
-            modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Item", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<int>("Attack")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Defense")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Items", (string)null);
                 });
 
             modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Monsters.Monster", b =>
@@ -138,7 +88,7 @@ namespace ConsoleRpgEntities.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Monsters", (string)null);
+                    b.ToTable("Monsters");
 
                     b.HasDiscriminator<string>("MonsterType").HasValue("Monster");
                 });
@@ -160,6 +110,10 @@ namespace ConsoleRpgEntities.Migrations
                     b.Property<int>("Health")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("MaxWeight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -168,7 +122,88 @@ namespace ConsoleRpgEntities.Migrations
 
                     b.HasIndex("EquipmentId");
 
-                    b.ToTable("Players", (string)null);
+                    b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Equipment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int?>("ArmorId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("WeaponId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArmorId");
+
+                    b.HasIndex("WeaponId");
+
+                    b.ToTable("Equipments");
+                });
+
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Inventory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId")
+                        .IsUnique();
+
+                    b.ToTable("Inventory");
+                });
+
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Item", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int>("Attack")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Defense")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("InventoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InventoryId");
+
+                    b.ToTable("Items");
                 });
 
             modelBuilder.Entity("ConsoleRpgEntities.Models.Abilities.PlayerAbilities.ShoveAbility", b =>
@@ -209,13 +244,22 @@ namespace ConsoleRpgEntities.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Equipment", b =>
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Player", b =>
                 {
-                    b.HasOne("ConsoleRpgEntities.Models.Characters.Item", "Armor")
+                    b.HasOne("ConsoleRpgEntities.Models.Equipments.Equipment", "Equipment")
+                        .WithMany()
+                        .HasForeignKey("EquipmentId");
+
+                    b.Navigation("Equipment");
+                });
+
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Equipment", b =>
+                {
+                    b.HasOne("ConsoleRpgEntities.Models.Equipments.Item", "Armor")
                         .WithMany()
                         .HasForeignKey("ArmorId");
 
-                    b.HasOne("ConsoleRpgEntities.Models.Characters.Item", "Weapon")
+                    b.HasOne("ConsoleRpgEntities.Models.Equipments.Item", "Weapon")
                         .WithMany()
                         .HasForeignKey("WeaponId");
 
@@ -224,13 +268,33 @@ namespace ConsoleRpgEntities.Migrations
                     b.Navigation("Weapon");
                 });
 
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Inventory", b =>
+                {
+                    b.HasOne("ConsoleRpgEntities.Models.Characters.Player", "Player")
+                        .WithOne("Inventory")
+                        .HasForeignKey("ConsoleRpgEntities.Models.Equipments.Inventory", "PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Item", b =>
+                {
+                    b.HasOne("ConsoleRpgEntities.Models.Equipments.Inventory", null)
+                        .WithMany("Items")
+                        .HasForeignKey("InventoryId");
+                });
+
             modelBuilder.Entity("ConsoleRpgEntities.Models.Characters.Player", b =>
                 {
-                    b.HasOne("ConsoleRpgEntities.Models.Characters.Equipment", "Equipment")
-                        .WithMany()
-                        .HasForeignKey("EquipmentId");
+                    b.Navigation("Inventory")
+                        .IsRequired();
+                });
 
-                    b.Navigation("Equipment");
+            modelBuilder.Entity("ConsoleRpgEntities.Models.Equipments.Inventory", b =>
+                {
+                    b.Navigation("Items");
                 });
 #pragma warning restore 612, 618
         }
