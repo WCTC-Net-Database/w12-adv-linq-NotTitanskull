@@ -1,21 +1,27 @@
-﻿-- 1. Insert a new sword into the Items table
-INSERT INTO Items (Name, Type, Attack, Defense)
-VALUES ('Sword', 'Weapon', 5, 0);
+﻿BEGIN TRANSACTION;
 
--- Get the Id of the newly inserted Item
+IF NOT EXISTS (
+    SELECT 1 FROM Items
+    WHERE Name = 'Sword' AND Type = 'Weapon' AND Attack = 5
+)
+BEGIN
+INSERT INTO Items (Name, Type, Attack, Defense, Weight, Value)
+VALUES ('Sword', 'Weapon', 5, 0, 3.50, 100);
+
 DECLARE @SwordId INT = SCOPE_IDENTITY();
 
--- 2. Insert a new Equipment record with the WeaponId set to the new sword
 INSERT INTO Equipments (WeaponId, ArmorId)
 VALUES (@SwordId, NULL);
 
--- Get the Id of the newly inserted Equipment
 DECLARE @EquipmentId INT = SCOPE_IDENTITY();
 
--- 3. Update the Player's EquipmentId to the new Equipment
--- Replace '1' with the actual Id of the player you want to update
-DECLARE @PlayerId INT = 1; -- Replace with actual Player Id
-
+    -- Assign equipment to player 1 only if player exists
+    IF EXISTS (SELECT 1 FROM Players WHERE Id = 1)
+BEGIN
 UPDATE Players
 SET EquipmentId = @EquipmentId
-WHERE Id = @PlayerId;
+WHERE Id = 1;
+END
+END
+
+COMMIT TRANSACTION;
