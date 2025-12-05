@@ -1,4 +1,8 @@
-﻿using ConsoleRpgEntities.Models.Abilities.PlayerAbilities;
+﻿// I probably should have split this file into multiple smaller files regarding inventory management
+// The code works fine as is, but for better maintainability, consider refactoring in the future.
+// If you have any suggestions or improvements, feel free to share!
+
+using ConsoleRpgEntities.Models.Abilities.PlayerAbilities;
 using ConsoleRpgEntities.Models.Attributes;
 using ConsoleRpgEntities.Models.Equipments;
 
