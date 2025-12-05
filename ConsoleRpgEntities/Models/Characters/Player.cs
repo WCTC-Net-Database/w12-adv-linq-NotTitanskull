@@ -5,6 +5,7 @@
 using ConsoleRpgEntities.Models.Abilities.PlayerAbilities;
 using ConsoleRpgEntities.Models.Attributes;
 using ConsoleRpgEntities.Models.Equipments;
+using ConsoleRpgEntities.Services;
 
 namespace ConsoleRpgEntities.Models.Characters
 {
@@ -26,134 +27,100 @@ namespace ConsoleRpgEntities.Models.Characters
         // Stretch: weight limit
         public decimal MaxWeight { get; set; } = 100m;
 
-        // --- Weight helpers ---
-        public decimal GetTotalWeight() =>
-            Inventory?.Items?.Sum(i => Convert.ToDecimal(i?.Weight ?? 0m)) ?? 0m;
+        // Service managers - lazy initialization to work with EF Core
+        private InventoryManager? _inventoryManager;
+        private EquipmentManager? _equipmentManager;
+        private ItemUsageService? _itemUsageService;
 
-        public bool CanAddItem(Item item)
+        /// <summary>
+        /// Gets the inventory manager for this player.
+        /// </summary>
+        public InventoryManager GetInventoryManager()
         {
-            if (item == null) return false;
-            var itemWeight = Convert.ToDecimal(item.Weight);
-            if (itemWeight < 0) return false;
-            return (GetTotalWeight() + itemWeight) <= MaxWeight;
+            if (_inventoryManager == null)
+            {
+                Inventory ??= new Inventory { PlayerId = Id, Player = this };
+                _inventoryManager = new InventoryManager(Inventory, MaxWeight);
+            }
+            return _inventoryManager;
         }
+
+        /// <summary>
+        /// Gets the equipment manager for this player.
+        /// </summary>
+        public EquipmentManager GetEquipmentManager()
+        {
+            if (_equipmentManager == null)
+            {
+                Equipment ??= new Equipment();
+                _equipmentManager = new EquipmentManager(Equipment);
+            }
+            return _equipmentManager;
+        }
+
+        /// <summary>
+        /// Gets the item usage service for this player.
+        /// </summary>
+        public ItemUsageService GetItemUsageService()
+        {
+            _itemUsageService ??= new ItemUsageService();
+            return _itemUsageService;
+        }
+
+        // --- Delegate methods to service managers ---
+        // These methods provide backward compatibility and delegate to the appropriate service
+
+        public decimal GetTotalWeight() => GetInventoryManager().GetTotalWeight();
+
+        public bool CanAddItem(Item item) => GetInventoryManager().CanAddItem(item);
 
         // --- Inventory operations ---
-        public bool AddItem(Item? item)
-        {
-            if (item == null) return false;
-
-            Inventory ??= new Inventory { PlayerId = Id, Player = this };
-            Inventory.Items ??= new List<Item>();
-
-            if (!CanAddItem(item)) return false;
-
-            Inventory.Items.Add(item);
-            return true;
-        }
+        public bool AddItem(Item? item) => GetInventoryManager().AddItem(item);
 
         public bool RemoveItem(string name)
         {
-            if (string.IsNullOrWhiteSpace(name)) return false;
-            if (Inventory?.Items == null) return false;
-
-            var item = Inventory.Items.FirstOrDefault(i =>
-                !string.IsNullOrEmpty(i?.Name) &&
-                i.Name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
-
+            var item = GetInventoryManager().FindItemByName(name);
             if (item == null) return false;
 
-            Inventory.Items.Remove(item);
+            // Unequip if currently equipped
+            GetEquipmentManager().UnequipItem(item);
 
-            if (Equipment != null)
-            {
-                if (Equipment.WeaponId == item.Id) { Equipment.Weapon = null; Equipment.WeaponId = null; }
-                if (Equipment.ArmorId == item.Id) { Equipment.Armor = null; Equipment.ArmorId = null; }
-            }
-            return true;
+            // Remove from inventory
+            return GetInventoryManager().RemoveItem(name);
         }
 
-        public IEnumerable<Item> SearchItems(string namePart)
-        {
-            if (Inventory?.Items == null) return Enumerable.Empty<Item>();
-            if (string.IsNullOrWhiteSpace(namePart)) return Inventory.Items;
-            return Inventory.Items
-                .Where(i => i.Name != null &&
-                            i.Name.IndexOf(namePart, System.StringComparison.OrdinalIgnoreCase) >= 0)
-                .ToList();
-        }
+        public IEnumerable<Item> SearchItems(string namePart) => 
+            GetInventoryManager().SearchItems(namePart);
 
-        public IEnumerable<IGrouping<string, Item>> ListItemsByType()
-        {
-            if (Inventory?.Items == null) return Enumerable.Empty<IGrouping<string, Item>>();
-            return Inventory.Items.GroupBy(i => i.Type).ToList();
-        }
+        public IEnumerable<IGrouping<string, Item>> ListItemsByType() => 
+            GetInventoryManager().ListItemsByType();
 
-        public IEnumerable<Item> SortByName()
-        {
-            if (Inventory?.Items == null) return Enumerable.Empty<Item>();
-            return Inventory.Items.OrderBy(i => i.Name).ToList();
-        }
+        public IEnumerable<Item> SortByName() => 
+            GetInventoryManager().SortByName();
 
-        public IEnumerable<Item> SortByAttack()
-        {
-            if (Inventory?.Items == null) return Enumerable.Empty<Item>();
-            return Inventory.Items.OrderByDescending(i => i.Attack).ToList();
-        }
+        public IEnumerable<Item> SortByAttack() => 
+            GetInventoryManager().SortByAttack();
 
-        public IEnumerable<Item> SortByDefense()
-        {
-            if (Inventory?.Items == null) return Enumerable.Empty<Item>();
-            return Inventory.Items.OrderByDescending(i => i.Defense).ToList();
-        }
+        public IEnumerable<Item> SortByDefense() => 
+            GetInventoryManager().SortByDefense();
 
         // Equip logic: set Equipment.Weapon or Equipment.Armor based on item.Type (e.g., "Weapon" / "Armor")
         public string EquipItem(string name)
         {
-            if (Inventory?.Items == null) return "No inventory.";
-            var item = Inventory.Items.FirstOrDefault(i => i.Name != null &&
-                i.Name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
+            var item = GetInventoryManager().FindItemByName(name);
             if (item == null) return "Item not found.";
-            if (item.Attack == 0 && item.Defense == 0) return "Item has no equip stats.";
-
-            Equipment ??= new Equipment();
-
-            var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
-            if (type == "weapon" || item.Attack > item.Defense)
-            {
-                Equipment.Weapon = item;
-                Equipment.WeaponId = item.Id;
-                return $"{item.Name} equipped as weapon.";
-            }
-            else if (type == "armor" || item.Defense >= item.Attack)
-            {
-                Equipment.Armor = item;
-                Equipment.ArmorId = item.Id;
-                return $"{item.Name} equipped as armor.";
-            }
-            else
-            {
-                return "Unable to determine equip slot for item.";
-            }
+            
+            return GetEquipmentManager().EquipItem(item);
         }
 
         // Use logic: simple example for potions (remove on use)
         public string UseItem(string name)
         {
-            if (Inventory?.Items == null) return "No inventory.";
-            var item = Inventory.Items.FirstOrDefault(i => i.Name != null &&
-                i.Name.Equals(name, System.StringComparison.OrdinalIgnoreCase));
+            var item = GetInventoryManager().FindItemByName(name);
             if (item == null) return "Item not found.";
 
-            var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
-            if (type == "potion")
-            {
-                Inventory.Items.Remove(item);
-                // apply effects here (example: restore health)
-                return $"{item.Name} consumed.";
-            }
-
-            return $"{item.Name} cannot be consumed.";
+            var (success, message) = GetItemUsageService().UseItem(item, GetInventoryManager());
+            return message;
         }
 
         public void Attack(ITargetable target)
